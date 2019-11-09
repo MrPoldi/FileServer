@@ -11,14 +11,16 @@
 #include <stdbool.h>
 
 
-#define PORT htons(1234)
+#define PORT htons(4444)
 #define SA struct sockaddr
 #define MAXFNLEN 512
 #define MAXBUFFLEN 1024
+#define FDIR "./Files"
 
-void PrintFilesInDirectory(char* dir)
+void GetFilesInDirectory(char* dir)
 {
 	struct dirent *de;  // Pointer for directory entry
+	FILE* file; 
 
     	DIR *dr = opendir(dir);
 
@@ -26,16 +28,37 @@ void PrintFilesInDirectory(char* dir)
     	{
         	printf("Could not open current directory" );        
     	}
+	
+
+	if((file = fopen("FilesInDirectory.txt", "w")) == NULL)
+	{
+		printf("Child: Failed creating a new file\n");	
+	}
+
+	//Skip . and ..
+	de = readdir(dr);
+	de = readdir(dr);	
 
     	while ((de = readdir(dr)) != NULL)
-            	printf("%s\n", de->d_name);
+	{
+		fputs(de->d_name, file);
+		fputs("\n", file);
+            	//printf("%s\n", de->d_name);
+	}
 
+	fclose(file);
     	closedir(dr);
+}
+
+int SendFile(char* dir)
+{
+	
 }
 
 int GetFile(int clientSocket)
 {
 	char fileName[MAXFNLEN];
+	char filePath[MAXFNLEN + 512];
 	char buff[MAXBUFFLEN];
 	long fileLength, bytesRecieved, bytesRecievedTogether;
 	bool flag = true;	
@@ -65,7 +88,9 @@ int GetFile(int clientSocket)
 	printf("Child: Success getting file length %ld\n", fileLength);
 
 	//Create a new file
-	if((file = fopen(fileName, "wb")) == NULL)
+	int n;
+	n = sprintf(filePath, "%s/%s", FDIR, fileName);
+	if((file = fopen(filePath, "wb")) == NULL)
 	{
 		printf("Child: Failed creating a new file\n");
 		return -1;
@@ -105,6 +130,8 @@ void Test(){printf("Hooray!\n");}
 
 int main(void)
 {    	
+	GetFilesInDirectory(FDIR);
+
 	//Set variables	
 	int listenSocket, clientSocket;
 	struct sockaddr_in addr;
@@ -147,7 +174,7 @@ int main(void)
 	else
 	{
 		printf("Parent: Server listening...\n");
-	}
+	}	
 
 	//Connect to multiple clients
 	while(1)
@@ -175,9 +202,14 @@ int main(void)
 				printf("Child: Starting service\n");
 				//Test();
 				if((GetFile(clientSocket)) == -1)
+				{
 					printf("Child: Operation failed\n");
+				}
 				else
+				{
 					printf("Child: Opeartion successful\n");
+					GetFilesInDirectory(FDIR);
+				}
 				printf("Child: Closing socket\n");
 				close(clientSocket);
 				printf("Child: Closing process\n");
