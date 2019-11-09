@@ -8,10 +8,13 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 
 #define PORT htons(1234)
 #define SA struct sockaddr
+#define MAXFNLEN 512
+#define MAXBUFFLEN 1024
 
 void PrintFilesInDirectory(char* dir)
 {
@@ -29,6 +32,74 @@ void PrintFilesInDirectory(char* dir)
 
     	closedir(dr);
 }
+
+int GetFile(int clientSocket)
+{
+	char fileName[MAXFNLEN];
+	char buff[MAXBUFFLEN];
+	long fileLength, bytesRecieved, bytesRecievedTogether, bytesRead;
+	bool flag = true;	
+	FILE* file;
+
+	//Get file name
+	memset(fileName, 0, MAXFNLEN); 
+	printf("Child: Getting file name\n");
+	if(recv(clientSocket, &fileName, MAXFNLEN, 0) < 0)
+	{
+		printf("Child: Failed getting file name\n");
+		return -1;	
+	}
+	printf("Child: Success getting file name - %s\n", fileName);
+	
+	//Notify ready to recieve file length	
+	send(clientSocket, &flag, sizeof(bool), 0);
+
+	//Get file length
+	if(recv(clientSocket, &fileLength, sizeof(long), 0) != sizeof(long))
+	{
+		printf("Child: Failed getting file length \n");
+		return -1;
+	}
+	
+	fileLength = ntohl(fileLength);
+	printf("Child: Success getting file length %ld\n", fileLength);
+
+	//Create a new file
+	if((file = fopen(fileName, "wb")) == NULL)
+	{
+		printf("Child: Failed creating a new file\n");
+		return -1;
+	}
+	printf("Child: File %s created\n", fileName);
+	
+	//Notify ready to recieve file
+	send(clientSocket, &flag, sizeof(bool), 0);
+
+	//Recieve data and write it to the created file
+	bytesRecievedTogether = 0;
+	while(bytesRecievedTogether < fileLength)
+	{
+		memset(buff, 0, MAXBUFFLEN);
+		bytesRecieved = recv(clientSocket, buff, MAXBUFFLEN, 0);
+		if(bytesRecieved < 0) break;
+		bytesRecievedTogether += bytesRecieved;
+		fputs(buff, file);
+	}	
+	
+	
+	fclose(file);
+	if(bytesRecievedTogether != bytesRecieved)
+	{
+		printf("Child: Failed recieving the file\n");
+		return -1;
+	}
+	else
+	{
+		printf("Child: Success recieving the file\n");
+		return 0;	
+	}
+}
+
 
 void Test(){printf("Hooray!\n");}
 
@@ -102,7 +173,8 @@ int main(void)
 			{
 				/*----Child process----*/
 				printf("Child: Starting service\n");
-				Test();
+				//Test();
+				GetFile(clientSocket);
 				printf("Child: Closing socket\n");
 				close(clientSocket);
 				printf("Child: Closing process\n");
