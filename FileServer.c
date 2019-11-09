@@ -37,7 +37,7 @@ int GetFile(int clientSocket)
 {
 	char fileName[MAXFNLEN];
 	char buff[MAXBUFFLEN];
-	long fileLength, bytesRecieved, bytesRecievedTogether, bytesRead;
+	long fileLength, bytesRecieved, bytesRecievedTogether;
 	bool flag = true;	
 	FILE* file;
 
@@ -174,7 +174,10 @@ int main(void)
 				/*----Child process----*/
 				printf("Child: Starting service\n");
 				//Test();
-				GetFile(clientSocket);
+				if((GetFile(clientSocket)) == -1)
+					printf("Child: Operation failed\n");
+				else
+					printf("Child: Opeartion successful\n");
 				printf("Child: Closing socket\n");
 				close(clientSocket);
 				printf("Child: Closing process\n");
