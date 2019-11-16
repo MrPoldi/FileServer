@@ -14,7 +14,7 @@
 #define PORT htons(1234)
 #define SA struct sockaddr
 #define MAXFNLEN 512
-#define MAXBUFFLEN 1024
+#define MAXBUFFLEN 1325
 #define FDIR "./Files"
 
 void GetFilesInDirectory(char* dir)
@@ -64,7 +64,7 @@ int SendFile(int clientSocket, char* fileName)
 	
 	//Get info about requested file
 	if(stat(filePath, &fileInfo))
-	{
+	{	
 		printf("Child: Failed getting info about file %s\n", fileName);
 		return -1;
 	}
@@ -172,7 +172,7 @@ int GetFile(int clientSocket)
 		return -1;
 	}
 	
-	fileLength = ntohl(fileLength);
+	fileLength = fileLength;
 	printf("Child: Success getting file length %ld\n", fileLength);
 
 	//Create a new file
@@ -190,18 +190,36 @@ int GetFile(int clientSocket)
 
 	//Recieve data and write it to the created file
 	bytesRecievedTogether = 0;
+	int i = 1;
 	while(bytesRecievedTogether < fileLength)
 	{
+		//Set memory in buffer
 		memset(buff, 0, MAXBUFFLEN);
+
+		//Recieve bytes from client
 		bytesRecieved = recv(clientSocket, buff, MAXBUFFLEN, 0);
-		if(bytesRecieved < 0) break;
-		bytesRecievedTogether += bytesRecieved;
-		fputs(buff, file);
+		printf("Child: Packet %d: %ld\n",i,bytesRecieved);
+
+		//If bytes count reached - break
+		if(bytesRecievedTogether == fileLength)
+		{
+			printf("Child: Bytes recieved after %ld loops : %d\n",
+			       bytesRecievedTogether, i);
+			break;
+		}		
+		else //If server needs more bytes
+		{
+			bytesRecievedTogether += bytesRecieved;
+			fwrite(buff, sizeof(char), bytesRecieved, file);	
+		}
+
+		i++;
+			
 	}	
 	
-	
+	send(clientSocket, &flag, sizeof(bool), 0);
 	fclose(file);
-	if(bytesRecievedTogether != bytesRecieved)
+	if(bytesRecievedTogether != fileLength)
 	{
 		printf("Child: Failed recieving the file\n");
 		return -1;
@@ -287,48 +305,53 @@ int main(void)
 			if(fork() == 0)
 			{
 				/*----Child process----*/
-				long a;
+				char a;
 				char* fileName;
 				printf("Child: Starting service\n");
 
-				printf("Child: Waiing for client's request...\n");
-				recv(clientSocket, &a, sizeof(long), 0);			
-				a = ntohl(a);				
-				switch(a) {
-					case 1: //Recieve file
-						if((GetFile(clientSocket)) == -1)
-						{
-							printf("Child: Operation failed\n");
+				//Connection loop
+				while(1) 
+				{
+					printf("Child: Waiing for client's request...\n");
+					recv(clientSocket, &a, sizeof(char), 0);
+								
+					switch(a) {
+						case 'a': //Recieve file
+							if((GetFile(clientSocket)) == -1)
+							{
+								printf("Child: Operation failed\n");
+							}
+							else
+							{
+								printf("Child: Opeartion successful\n");
+								GetFilesInDirectory(FDIR);
+							}
+							break;
+						case 'b': //Send file
+							fileName = RecvFileName(clientSocket);
+							if((SendFile(clientSocket, fileName)) == -1)
+							{
+								printf("Child: Operation failed\n");
+							}
+							else
+							{
+								printf("Child: Opeartion successful\n");
+							}
+							break;
+						case 'c': //Send files in directory
+							Test();
+							break;
+						case 'd': //Disconnect
+							printf("Child: Closing socket\n");
+							close(clientSocket);
+							printf("Child: Closing process\n");
+							exit(0);
+							break;
+						default: //Wrong request
+							printf("Child: Wrong request from client\n");
+							break;
 						}
-						else
-						{
-							printf("Child: Opeartion successful\n");
-							GetFilesInDirectory(FDIR);
-						}
-						break;
-					case 2: //Send file
-						fileName = RecvFileName(clientSocket);
-						if((SendFile(clientSocket, fileName)) == -1)
-						{
-							printf("Child: Operation failed\n");
-						}
-						else
-						{
-							printf("Child: Opeartion successful\n");
-						}
-						break;
-					case 3: //Send file in dir
-						Test();
-						break;
-					default: //Wrong request
-						printf("Child: Wrong request from client\n");
-						break;
 				}
-				//Test();
-				printf("Child: Closing socket\n");
-				close(clientSocket);
-				printf("Child: Closing process\n");
-				exit(0);
 			}
 			else
 			{
@@ -342,4 +365,3 @@ int main(void)
 
     	return 0;
 }
-
