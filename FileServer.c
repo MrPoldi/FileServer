@@ -137,7 +137,7 @@ char* RecvFileName(int clientSocket)
 	if(recv(clientSocket, &fileName, MAXFNLEN, 0) < 0)
 	{
 		printf("Child: Failed getting file name\n");
-		return "";	
+		return "\0";	
 	}
 	printf("Child: Success getting file name - %s\n", fileName);
 	return fileName;
@@ -313,7 +313,13 @@ int main(void)
 				while(1) 
 				{
 					printf("Child: Waiing for client's request...\n");
+					a = '\0';
 					recv(clientSocket, &a, sizeof(char), 0);
+					if(a == '\0')
+					{
+						printf("Child: Client timed out\n");
+						break;
+					}
 								
 					switch(a) {
 						case 'a': //Recieve file
@@ -329,6 +335,12 @@ int main(void)
 							break;
 						case 'b': //Send file
 							fileName = RecvFileName(clientSocket);
+							if(fileName[0] == '\0')
+							{
+								printf("Child: File name not recieved\n");
+								break;
+							}
+							
 							if((SendFile(clientSocket, fileName)) == -1)
 							{
 								printf("Child: Operation failed\n");
