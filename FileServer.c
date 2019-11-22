@@ -184,7 +184,7 @@ int GetFile(int clientSocket)
 		return -1;
 	}
 	printf("Child: File %s created\n", fileName);
-	
+	flag = false;
 	//Notify ready to recieve file
 	send(clientSocket, &flag, sizeof(bool), 0);
 
@@ -199,6 +199,11 @@ int GetFile(int clientSocket)
 		//Recieve bytes from client
 		bytesRecieved = recv(clientSocket, buff, MAXBUFFLEN, 0);
 		printf("Child: Packet %d: %ld\n",i,bytesRecieved);
+		
+		if(bytesRecieved <= 0) //If client stopped sending packets
+		{
+			break;
+		}
 
 		//If bytes count reached - break
 		if(bytesRecievedTogether == fileLength)
@@ -222,6 +227,11 @@ int GetFile(int clientSocket)
 	if(bytesRecievedTogether != fileLength)
 	{
 		printf("Child: Failed recieving the file\n");
+		if (remove(filePath) == 0) 
+			printf("Child: File deleted successfully\n"); 
+        else
+			printf("Child: Unable to delete the file\n"); 
+		
 		return -1;
 	}
 	else
@@ -231,6 +241,11 @@ int GetFile(int clientSocket)
 	}
 }
 
+void TestSend(int clientSocket)
+{
+	char* s = "ABCDEFG";
+	send(clientSocket, s, 7, 0);	
+}
 
 void Test(){printf("Hooray!\n");}
 
@@ -312,7 +327,7 @@ int main(void)
 				//Connection loop
 				while(1) 
 				{
-					printf("Child: Waiing for client's request...\n");
+					printf("Child: Waiting for client's request...\n");
 					a = '\0';
 					recv(clientSocket, &a, sizeof(char), 0);
 					if(a == '\0')
@@ -351,7 +366,7 @@ int main(void)
 							}
 							break;
 						case 'c': //Send files in directory
-							Test();
+							TestSend(clientSocket);
 							break;
 						case 'd': //Disconnect
 							printf("Child: Closing socket\n");
