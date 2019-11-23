@@ -184,7 +184,7 @@ int GetFile(int clientSocket)
 		return -1;
 	}
 	printf("Child: File %s created\n", fileName);
-	flag = false;
+
 	//Notify ready to recieve file
 	send(clientSocket, &flag, sizeof(bool), 0);
 
