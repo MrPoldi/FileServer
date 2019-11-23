@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <unistd.h>
 #include <stdbool.h>
 
@@ -191,25 +192,41 @@ int GetFile(int clientSocket)
 	//Recieve data and write it to the created file
 	bytesRecievedTogether = 0;
 	int i = 1;
+	struct timeval timeout;	
+	fd_set read_fd_set;
+	
 	while(bytesRecievedTogether < fileLength)
 	{
+		timeout.tv_sec = 10;
+		timeout.tv_usec = 0;
+		FD_ZERO(&read_fd_set);
+		FD_SET((unsigned int)clientSocket, &read_fd_set);
+	
 		//Set memory in buffer
 		memset(buff, 0, MAXBUFFLEN);
 
+		select(clientSocket + 1, &read_fd_set, NULL, NULL, &timeout);
+		
+		if(!(FD_ISSET(clientSocket, &read_fd_set)))
+		{
+			printf("Child: Client timed out sending the file\n");
+			break;
+		}
+				
 		//Recieve bytes from client
 		bytesRecieved = recv(clientSocket, buff, MAXBUFFLEN, 0);
 		printf("Child: Packet %d: %ld\n",i,bytesRecieved);
 
 		if(bytesRecieved <= 0) //If client stopped sending packets
 		{
-			printf("Child: Client timed out sending file\n");
+			printf("Child: Client stopped sending the file\n");
 			break;
 		}
 
 		//If bytes count reached - break
 		if(bytesRecievedTogether == fileLength)
 		{
-			printf("Child: Bytes recieved after %ld loops : %d\n",
+			printf("Child: Bytes received after %ld loops : %d\n",
 			       bytesRecievedTogether, i);
 			break;
 		}		
@@ -224,12 +241,12 @@ int GetFile(int clientSocket)
 		i++;
 			
 	}	
-	
+	FD_CLR(clientSocket, &read_fd_set);
 	send(clientSocket, &flag, sizeof(bool), 0);
 	fclose(file);
 	if(bytesRecievedTogether != fileLength)
 	{
-		printf("Child: Failed recieving the file\n");
+		printf("Child: Failed receiving the file\n");
 		if (remove(filePath) == 0) 
 			printf("Child: File deleted successfully\n"); 
         	else
@@ -239,7 +256,7 @@ int GetFile(int clientSocket)
 	}
 	else
 	{
-		printf("Child: Success recieving the file\n");
+		printf("Child: Success receiving the file\n");
 		return 0;	
 	}
 }
@@ -364,7 +381,7 @@ int main(void)
 							}
 							break;
 						case 'c': //Send files in directory
-							Test();
+							Test();							
 							break;
 						case 'd': //Disconnect
 							printf("Child: Closing socket\n");
