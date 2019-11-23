@@ -184,7 +184,7 @@ int GetFile(int clientSocket)
 		return -1;
 	}
 	printf("Child: File %s created\n", fileName);
-
+	
 	//Notify ready to recieve file
 	send(clientSocket, &flag, sizeof(bool), 0);
 
@@ -199,9 +199,10 @@ int GetFile(int clientSocket)
 		//Recieve bytes from client
 		bytesRecieved = recv(clientSocket, buff, MAXBUFFLEN, 0);
 		printf("Child: Packet %d: %ld\n",i,bytesRecieved);
-		
+
 		if(bytesRecieved <= 0) //If client stopped sending packets
 		{
+			printf("Child: Client timed out sending file\n");
 			break;
 		}
 
@@ -218,6 +219,8 @@ int GetFile(int clientSocket)
 			fwrite(buff, sizeof(char), bytesRecieved, file);	
 		}
 
+		
+
 		i++;
 			
 	}	
@@ -229,9 +232,9 @@ int GetFile(int clientSocket)
 		printf("Child: Failed recieving the file\n");
 		if (remove(filePath) == 0) 
 			printf("Child: File deleted successfully\n"); 
-        else
-			printf("Child: Unable to delete the file\n"); 
-		
+        	else
+			printf("Child: Unable to delete the file\n");
+
 		return -1;
 	}
 	else
@@ -241,11 +244,6 @@ int GetFile(int clientSocket)
 	}
 }
 
-void TestSend(int clientSocket)
-{
-	char* s = "ABCDEFG";
-	send(clientSocket, s, 7, 0);	
-}
 
 void Test(){printf("Hooray!\n");}
 
@@ -344,7 +342,7 @@ int main(void)
 							}
 							else
 							{
-								printf("Child: Opeartion successful\n");
+								printf("Child: Operation successful\n");
 								GetFilesInDirectory(FDIR);
 							}
 							break;
@@ -362,11 +360,11 @@ int main(void)
 							}
 							else
 							{
-								printf("Child: Opeartion successful\n");
+								printf("Child: Operation successful\n");
 							}
 							break;
 						case 'c': //Send files in directory
-							TestSend(clientSocket);
+							Test();
 							break;
 						case 'd': //Disconnect
 							printf("Child: Closing socket\n");
