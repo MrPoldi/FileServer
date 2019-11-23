@@ -80,7 +80,7 @@ int SendFile(int clientSocket, char* fileName)
 	printf("Child: File %s is %lu bytes long\n", fileName, fileLength);	
 
 	//Send file size
-	fileLength = htonl(fileLength);
+	//fileLength = htonl(fileLength);
 	if(send(clientSocket, &fileLength, sizeof(long), 0) != sizeof(long))
 	{
 		printf("Child: Failed sending file's %s size\n", fileName);
@@ -88,7 +88,7 @@ int SendFile(int clientSocket, char* fileName)
 	}
 
 	//Open requested file
-	fileLength = ntohl(fileLength);
+	//fileLength = ntohl(fileLength);
 	bytesSentTogether = 0;
 	file = fopen(filePath, "rb");
 	if(file == NULL)
@@ -98,7 +98,7 @@ int SendFile(int clientSocket, char* fileName)
 	}
 	printf("Child: Success opening file %s", fileName);
 	
-	/*
+	
 	//Client is ready to recieve
 	bool flag = true;
 	if(recv(clientSocket, &flag, sizeof(bool), 0) != sizeof(bool))
@@ -106,7 +106,7 @@ int SendFile(int clientSocket, char* fileName)
 		printf("Child: Client is not ready to recieve the file\n");
 		return -1;
 	}
-	*/
+	
 
 	//Send requested file
 	while(bytesSentTogether < fileLength)
@@ -381,7 +381,15 @@ int main(void)
 							}
 							break;
 						case 'c': //Send files in directory
-							Test();							
+							Test();
+							if((SendFile(clientSocket, "../FilesInDirectory.txt")) == -1)
+							{
+								printf("Child: Operation failed\n");
+							}
+							else
+							{
+								printf("Child: Operation successful\n");
+							}
 							break;
 						case 'd': //Disconnect
 							printf("Child: Closing socket\n");
