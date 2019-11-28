@@ -15,7 +15,7 @@
 #define PORT htons(1234)
 #define SA struct sockaddr
 #define MAXFNLEN 512
-#define MAXBUFFLEN 1325
+#define MAXBUFFLEN 100000
 #define FDIR "./Files"
 
 void GetFilesInDirectory(char* dir)
@@ -96,7 +96,7 @@ int SendFile(int clientSocket, char* fileName)
 		printf("Child: Failed opening file %s\n", fileName);
 		return -1;
 	}
-	printf("Child: Success opening file %s", fileName);
+	printf("Child: Success opening file %s\n", fileName);
 	
 	
 	//Client is ready to recieve
@@ -109,12 +109,15 @@ int SendFile(int clientSocket, char* fileName)
 	
 
 	//Send requested file
+	int i = 1;
 	while(bytesSentTogether < fileLength)
 	{
 		bytesRead = fread(buff, 1, MAXBUFFLEN, file);
 		bytesSent = send(clientSocket, buff, bytesRead, 0);
+		printf("Child: Packet %d: %ld\n",i,bytesSent);
 		if(bytesRead != bytesSent) break;
-		bytesSentTogether += bytesSent;		
+		bytesSentTogether += bytesSent;	
+		i++;	
 	}
 
 	if(bytesSentTogether != fileLength)
@@ -356,6 +359,7 @@ int main(void)
 							if((GetFile(clientSocket)) == -1)
 							{
 								printf("Child: Operation failed\n");
+								GetFilesInDirectory(FDIR);
 							}
 							else
 							{
@@ -381,7 +385,7 @@ int main(void)
 							}
 							break;
 						case 'c': //Send files in directory
-							Test();
+							GetFilesInDirectory(FDIR);
 							if((SendFile(clientSocket, "../FilesInDirectory.txt")) == -1)
 							{
 								printf("Child: Operation failed\n");
